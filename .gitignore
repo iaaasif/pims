@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+dist/
+dist-ssr/
+
+# Environment variables
+.env
+.env.production
+.env*.local
+!.env.example
+
+# Logs & Error dumps
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.txt
+
+# Editor & System files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.agents/
+
+# Supabase CLI
+supabase/.temp/
+
+# Android build & release outputs
+android/.gradle/
+android/build/
+android/app/build/
+android/app/release/
+android/captures/
+*.apk
+*.aab
+*.keystore
+*.jks

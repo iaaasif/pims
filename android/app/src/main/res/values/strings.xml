@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">PIMS</string>
+    <string name="title_activity_main">PIMS</string>
+    <string name="package_name">com.pims.app</string>
+    <string name="custom_url_scheme">com.pims.app</string>
+</resources>

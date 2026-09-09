@@ -9,7 +9,7 @@ if (!connectionString) {
   console.warn('VITE_NEON_DATABASE_URL is not set in environment variables.')
 }
 
-export const sql = neon(connectionString)
+export const sql = neon(connectionString, { disableWarningInBrowsers: true })
 
 export async function queryNeon<T = any>(text: string, params: any[] = []): Promise<T[]> {
   try {

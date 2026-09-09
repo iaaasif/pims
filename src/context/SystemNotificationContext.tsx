@@ -123,9 +123,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
         return () => {
             if (channel) {
-                supabase.removeChannel(channel).catch(err => {
-                    console.log('Channel removal error (can ignore):', err)
-                })
+                try {
+                    const removal = supabase.removeChannel(channel)
+                    if (removal && typeof (removal as any).catch === 'function') {
+                        (removal as any).catch(() => {})
+                    }
+                } catch {
+                    // Ignore cleanup error
+                }
             }
         }
     }, [user, fetchNotifications])

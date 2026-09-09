@@ -492,10 +492,11 @@ export class NeonClient {
     }
   }
 
-  removeChannel(ch: RealtimeChannel) {
+  async removeChannel(ch: RealtimeChannel) {
     if (ch && typeof ch.unsubscribe === 'function') {
       ch.unsubscribe()
     }
+    return Promise.resolve({ error: null })
   }
 }
 

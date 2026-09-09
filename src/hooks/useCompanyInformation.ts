@@ -54,7 +54,7 @@ export function useCompanyInformation(options: UseCompanyInformationOptions = {}
       const { data, error: fetchError } = await supabase
         .from('company_information')
         .select('*')
-        .single();
+        .maybeSingle();
 
       if (fetchError) throw fetchError;
 
@@ -94,7 +94,7 @@ export function useCompanyInformation(options: UseCompanyInformationOptions = {}
         .from('print_settings')
         .select('*')
         .eq('company_id', companyId)
-        .single();
+        .maybeSingle();
 
       if (settingsError) throw settingsError;
 

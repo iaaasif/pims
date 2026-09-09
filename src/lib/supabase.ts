@@ -1,30 +1,13 @@
-import { createClient } from '@supabase/supabase-js'
+/**
+ * PIMS Backend Adapter
+ * Migrated from Supabase to:
+ * - Neon Serverless PostgreSQL (Database operations via HTTP)
+ * - Firebase (Real-time notifications and live event pub/sub)
+ */
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { neonDb } from './neonPostgresClient'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+// Export singleton instance mapped to Neon DB + Firebase live notifications with full SupabaseClient typing
+export const supabase = neonDb as unknown as SupabaseClient
 
-if (!supabaseUrl || !supabaseAnonKey) {
-    console.error(
-        'CRITICAL: Supabase environment variables are missing!\n' +
-        'Please create a .env file based on .env.example with VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
-    )
-}
-
-// Singleton instance to prevent multiple clients across re-renders
-export const supabase = createClient(
-    supabaseUrl || 'https://placeholder.supabase.co', 
-    supabaseAnonKey || 'placeholder-anon-key', 
-    {
-        realtime: {
-            params: {
-                eventsPerSecond: 10
-            }
-        },
-        auth: {
-            persistSession: true,
-            autoRefreshToken: true
-        }
-    }
-)
-
-export { createClient }
+export { neonDb }

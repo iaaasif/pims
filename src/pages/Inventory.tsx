@@ -10,6 +10,7 @@ import {
     Boxes,
     AlertTriangle,
     Layers,
+    ScanBarcode,
 } from 'lucide-react'
 
 import { useMaterials } from '@/hooks/useMaterials'
@@ -21,6 +22,7 @@ import { toast } from 'sonner'
 import { AddMaterialDialog } from '@/components/inventory/AddMaterialDialog'
 import { EditMaterialDialog } from '@/components/inventory/EditMaterialDialog'
 import { ImportMaterialDialog } from '@/components/inventory/ImportMaterialDialog'
+import { BarcodeScannerDialog } from '@/components/inventory/BarcodeScannerDialog'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 import {
@@ -54,6 +56,7 @@ export default function Inventory() {
     const { materials, loading: loadingMaterials, refresh: refreshMaterials, deleteMaterial } = useMaterials()
     const { projects, loading: loadingProjects } = useProjects()
     const [searchTerm, setSearchTerm] = useState('')
+    const [scannerOpen, setScannerOpen] = useState(false)
     const navigate = useNavigate()
     const { canCreate, canEdit, canDelete } = usePermissions()
 
@@ -121,9 +124,25 @@ export default function Inventory() {
                         </h1>
                         <p className="text-muted-foreground text-xs font-medium mt-1">Manage global materials and project-specific stock levels</p>
                     </div>
-                    {canCreate('materials') && (
-                        <AddMaterialDialog onMaterialAdded={refreshMaterials} />
-                    )}
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setScannerOpen(true)}
+                            className="gap-2 border-primary/30 hover:bg-primary/10 text-xs font-bold"
+                        >
+                            <ScanBarcode className="h-4 w-4 text-primary" />
+                            <span className="hidden sm:inline">Scan Barcode / QR</span>
+                            <span className="sm:hidden">Scan</span>
+                        </Button>
+                        {canCreate('materials') && (
+                            <AddMaterialDialog onMaterialAdded={refreshMaterials} />
+                        )}
+                    </div>
+                    <BarcodeScannerDialog
+                        open={scannerOpen}
+                        onOpenChange={setScannerOpen}
+                        onItemFound={(item) => setSearchTerm(item.code || item.name)}
+                    />
                 </div>
             </div>
 

@@ -10,8 +10,10 @@ import {
     AlertCircle,
     UserCheck,
     Calculator,
-    Plus
+    Plus,
+    ShieldCheck
 } from 'lucide-react'
+import { ThreeWayMatchingDialog } from '@/components/finance/ThreeWayMatchingDialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -35,6 +37,7 @@ export default function BillVerification() {
     const [searchTerm, setSearchTerm] = useState('')
     const [loading, setLoading] = useState(true)
     const [bills, setBills] = useState<any[]>([])
+    const [auditOpen, setAuditOpen] = useState(false)
     const [refreshTrigger, setRefreshTrigger] = useState(0)
 
     useEffect(() => {
@@ -99,11 +102,20 @@ export default function BillVerification() {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            className="h-11 rounded-xl border-primary/30 text-primary hover:bg-primary/10 font-bold gap-2 px-4 shadow-sm"
+                            onClick={() => setAuditOpen(true)}
+                        >
+                            <ShieldCheck className="h-4 w-4 text-primary" />
+                            3-Way Match Audit
+                        </Button>
                         <Button className="h-11 rounded-xl bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20 gap-2 px-6" onClick={() => toast.info("Manual submission form coming soon!")}>
                             <Plus className="h-4 w-4" />
                             Submit New Bill
                         </Button>
                     </div>
+                    <ThreeWayMatchingDialog open={auditOpen} onOpenChange={setAuditOpen} />
                 </div>
             </div>
 

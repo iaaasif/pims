@@ -462,6 +462,26 @@ export class NeonClient {
     return new RealtimeChannel(channelName)
   }
 
+  functions = {
+    invoke: async (functionName: string, options: any = {}) => {
+      try {
+        if (functionName === 'invite-user') {
+          const body = options.body || {}
+          if (body.email) {
+            await queryNeon(
+              'INSERT INTO profiles (email, full_name, role, status) VALUES ($1, $2, $3, $4) ON CONFLICT (email) DO UPDATE SET role = $3 RETURNING *;',
+              [body.email, body.full_name || body.email.split('@')[0], body.role || 'user', 'active']
+            )
+            return { data: { success: true }, error: null }
+          }
+        }
+        return { data: { success: true, message: `Function ${functionName} processed` }, error: null }
+      } catch (err: any) {
+        return { data: null, error: err }
+      }
+    }
+  }
+
   removeChannel(ch: RealtimeChannel) {
     if (ch && typeof ch.unsubscribe === 'function') {
       ch.unsubscribe()

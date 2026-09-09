@@ -14,6 +14,7 @@ export class QueryBuilder<T = any> implements PromiseLike<PostgrestResponse<T>> 
   private columns = '*'
   private insertData: any = null
   private updateData: any = null
+  private onConflictClause = ''
   private whereClauses: { sql: string; val?: any }[] = []
   private orderByClause = ''
   private limitClause = ''
@@ -33,6 +34,20 @@ export class QueryBuilder<T = any> implements PromiseLike<PostgrestResponse<T>> 
   insert(data: any | any[]): this {
     this.action = 'insert'
     this.insertData = data
+    return this
+  }
+
+  upsert(data: any | any[], options?: { onConflict?: string; ignoreDuplicates?: boolean }): this {
+    this.action = 'insert'
+    this.insertData = data
+    if (options?.onConflict) {
+      const conflictCols = options.onConflict.split(',').map(c => `"${c.trim()}"`).join(', ')
+      if (options.ignoreDuplicates) {
+        this.onConflictClause = `ON CONFLICT (${conflictCols}) DO NOTHING`
+      } else {
+        this.onConflictClause = `ON CONFLICT (${conflictCols}) DO UPDATE SET `
+      }
+    }
     return this
   }
 
@@ -244,7 +259,20 @@ export class QueryBuilder<T = any> implements PromiseLike<PostgrestResponse<T>> 
           valuePlaceholders.push(`(${rowPlaceholders.join(', ')})`)
         }
 
-        const query = `INSERT INTO "${this.tableName}" (${colNames}) VALUES ${valuePlaceholders.join(', ')} RETURNING *;`
+        let conflictSql = ''
+        if (this.onConflictClause) {
+          if (this.onConflictClause.endsWith('DO NOTHING')) {
+            conflictSql = this.onConflictClause
+          } else {
+            const updateCols = keys
+              .filter(k => k !== 'id' && !this.onConflictClause.includes(`"${k}"`))
+              .map(k => `"${k}" = EXCLUDED."${k}"`)
+              .join(', ')
+            conflictSql = `${this.onConflictClause} ${updateCols || 'updated_at = NOW()'}`
+          }
+        }
+
+        const query = `INSERT INTO "${this.tableName}" (${colNames}) VALUES ${valuePlaceholders.join(', ')} ${conflictSql} RETURNING *;`
         const inserted = await queryNeon(query, allParams)
 
         // Broadcast insert notification via Firebase live bus

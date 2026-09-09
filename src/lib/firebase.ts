@@ -45,7 +45,9 @@ export const firebaseDb = dbInstance
 export async function sendLiveNotification(channel: string, payload: any) {
   if (!isFirebaseConfigured || !firebaseDb) {
     // In local/mock mode, dispatch a local CustomEvent so real-time features continue to work!
-    window.dispatchEvent(new CustomEvent(`live-notification:${channel}`, { detail: payload }))
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(`live-notification:${channel}`, { detail: payload }))
+    }
     return
   }
 
@@ -58,7 +60,9 @@ export async function sendLiveNotification(channel: string, payload: any) {
     })
   } catch (err) {
     console.warn('Failed to send Firebase notification, falling back to local bus:', err)
-    window.dispatchEvent(new CustomEvent(`live-notification:${channel}`, { detail: payload }))
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(`live-notification:${channel}`, { detail: payload }))
+    }
   }
 }
 
@@ -70,11 +74,15 @@ export function subscribeLiveNotifications(channel: string, callback: (payload: 
   const localHandler = (e: Event) => {
     callback((e as CustomEvent).detail)
   }
-  window.addEventListener(`live-notification:${channel}`, localHandler)
+  if (typeof window !== 'undefined') {
+    window.addEventListener(`live-notification:${channel}`, localHandler)
+  }
 
   if (!isFirebaseConfigured || !firebaseDb) {
     return () => {
-      window.removeEventListener(`live-notification:${channel}`, localHandler)
+      if (typeof window !== 'undefined') {
+        window.removeEventListener(`live-notification:${channel}`, localHandler)
+      }
     }
   }
 
@@ -93,14 +101,18 @@ export function subscribeLiveNotifications(channel: string, callback: (payload: 
     })
 
     return () => {
-      window.removeEventListener(`live-notification:${channel}`, localHandler)
+      if (typeof window !== 'undefined') {
+        window.removeEventListener(`live-notification:${channel}`, localHandler)
+      }
       unsubscribe()
       off(channelRef)
     }
   } catch (err) {
     console.warn('Error subscribing to Firebase channel:', err)
     return () => {
-      window.removeEventListener(`live-notification:${channel}`, localHandler)
+      if (typeof window !== 'undefined') {
+        window.removeEventListener(`live-notification:${channel}`, localHandler)
+      }
     }
   }
 }

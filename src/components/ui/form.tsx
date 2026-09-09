@@ -27,8 +27,6 @@ const FormFieldContext = React.createContext<FormFieldContextValue | null>(null)
 const FormField = <TFieldValues extends FieldValues = FieldValues, TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>>(
   props: React.ComponentProps<typeof Controller<TFieldValues, TName>>
 ) => {
-  console.log('FormField rendering:', { name: props.name })
-
   return (
     <FormFieldContext.Provider value={{ name: props.name }}>
       <Controller {...props} />
@@ -40,13 +38,6 @@ const useFormField = () => {
   const fieldContext = React.useContext(FormFieldContext)
   const itemContext = React.useContext(FormItemContext)
   const { getFieldState, formState } = useFormContext()
-
-  console.log('useFormField debug:', {
-    fieldContext: !!fieldContext,
-    itemContext: !!itemContext,
-    fieldName: fieldContext?.name,
-    itemId: itemContext?.id
-  })
 
   if (!fieldContext) {
     throw new Error("useFormField should be used within <FormField>")
@@ -83,8 +74,6 @@ const FormItem = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
   const id = React.useId()
-
-  console.log('FormItem rendering:', { id })
 
   return (
     <FormItemContext.Provider value={{ id }}>

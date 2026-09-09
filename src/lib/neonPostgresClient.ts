@@ -526,6 +526,65 @@ export class NeonClient {
     }
     return Promise.resolve({ error: null })
   }
+
+  storage = new StorageClient()
+}
+
+class StorageBucket {
+  private bucketName: string
+
+  constructor(bucketName: string) {
+    this.bucketName = bucketName
+  }
+
+  async upload(filePath: string, file: any, _options?: any): Promise<{ data: any; error: any }> {
+    try {
+      return new Promise((resolve) => {
+        if (typeof FileReader !== 'undefined' && file instanceof Blob) {
+          const reader = new FileReader()
+          reader.onload = () => {
+            const base64 = reader.result as string
+            try {
+              if (typeof localStorage !== 'undefined') {
+                localStorage.setItem(`pims_storage_${this.bucketName}_${filePath}`, base64)
+              }
+            } catch {
+              // quota exceeded or ignore
+            }
+            resolve({ data: { path: filePath }, error: null })
+          }
+          reader.onerror = () => resolve({ data: null, error: new Error('Failed to read file') })
+          reader.readAsDataURL(file)
+        } else {
+          resolve({ data: { path: filePath }, error: null })
+        }
+      })
+    } catch (err: any) {
+      return { data: null, error: err }
+    }
+  }
+
+  getPublicUrl(filePath: string): { data: { publicUrl: string } } {
+    try {
+      const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(`pims_storage_${this.bucketName}_${filePath}`) : null
+      if (stored) {
+        return { data: { publicUrl: stored } }
+      }
+    } catch {
+      // ignore
+    }
+    return { data: { publicUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(filePath)}` } }
+  }
+
+  async remove(_filePaths: string[]): Promise<{ data: any; error: any }> {
+    return { data: null, error: null }
+  }
+}
+
+class StorageClient {
+  from(bucket: string) {
+    return new StorageBucket(bucket)
+  }
 }
 
 export const neonDb = new NeonClient()

@@ -7,7 +7,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { neonDb } from './neonPostgresClient'
 
-// Export singleton instance mapped to Neon DB + Firebase live notifications with full SupabaseClient typing
 export const supabase = neonDb as unknown as SupabaseClient
-
 export { neonDb }

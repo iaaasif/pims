@@ -1,9 +1,12 @@
 import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { LiveAlertToast } from '@/components/notifications/LiveAlertToast'
 
 export function useRealTimeAlerts() {
+    const navigate = useNavigate()
+
     useEffect(() => {
         // 1. Listen for new Purchase Requisitions
         const prChannel = supabase
@@ -24,7 +27,7 @@ export function useRealTimeAlerts() {
                                 variant="success"
                                 onClose={() => toast.dismiss(t)}
                                 actionLabel="Review Now"
-                                onAction={() => window.location.href = '/procurement/requisitions'}
+                                onAction={() => navigate('/procurement/requisitions')}
                             />
                         ), { duration: 10000 })
                     }
@@ -54,7 +57,7 @@ export function useRealTimeAlerts() {
                                 variant="warning"
                                 onClose={() => toast.dismiss(t)}
                                 actionLabel="Restock Inventory"
-                                onAction={() => window.location.href = '/inventory'}
+                                onAction={() => navigate('/inventory')}
                             />
                         ), { duration: 15000 })
                     }

@@ -62,7 +62,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, [])
 
     async function fetchProfile(userId: string) {
-        console.log('Fetching profile for userId:', userId)
         try {
             const { data, error } = await supabase
                 .from('profiles')
@@ -70,33 +69,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 .eq('id', userId)
                 .single()
 
-            console.log('Profile fetch result:', { data, error })
-
             if (error) {
-                console.error('Error fetching profile:', error)
-
                 // Handle specific error codes
                 if (error.code === 'PGRST116') { // No rows returned
-                    console.log('No profile found, creating one...')
                     await createProfileForUser(userId)
                 } else if (error.code === '406') { // Not acceptable - RLS issue
                     console.error('RLS policy error, user may not have permission')
                     toast.error('Permission denied. Please contact admin.')
                 } else {
-                    console.error('Other profile error:', error.message)
+                    console.error('Profile fetch error:', error.message)
                     toast.error('Failed to load profile')
                 }
             } else {
-                console.log('Profile loaded successfully:', data)
                 setProfile(data)
-
-                // Force role verification
-                console.log('User role verification:', {
-                    email: data.email,
-                    role: data.role,
-                    isAdmin: data.role === 'admin',
-                    isManager: data.role === 'manager' || data.role === 'admin'
-                })
             }
         } catch (error) {
             console.error('Error fetching profile:', error)
@@ -156,19 +141,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isManager,
         canEdit,
     }
-
-    console.log('AuthContext state:', {
-        user: user?.email,
-        profile: {
-            email: profile?.email,
-            role: profile?.role
-        },
-        loading,
-        isAdmin,
-        isManager
-    })
-
-    console.log('AuthProvider: loading state =', loading)
 
     if (loading) {
         return <SyncLoader fullScreen />

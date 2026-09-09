@@ -33,17 +33,20 @@ export default function VatTaxManagement() {
     const [searchTerm, setSearchTerm] = useState('')
     const [loading, setLoading] = useState(true)
     const [taxRecords, setTaxRecords] = useState<any[]>([])
+    const [refreshTrigger, setRefreshTrigger] = useState(0)
 
     useEffect(() => {
-        loadData()
-    }, [])
-
-    const loadData = async () => {
-        setLoading(true)
-        const data = await fetchTaxRecords()
-        setTaxRecords(data)
-        setLoading(false)
-    }
+        let isMounted = true
+        fetchTaxRecords().then(data => {
+            if (isMounted) {
+                setTaxRecords(data)
+                setLoading(false)
+            }
+        })
+        return () => {
+            isMounted = false
+        }
+    }, [fetchTaxRecords, refreshTrigger])
 
     const handleAction = (action: string) => {
         toast.info(`${action} feature coming soon`, {
@@ -63,7 +66,7 @@ export default function VatTaxManagement() {
             date: new Date().toISOString().split('T')[0]
         }
         await addTaxRecord(newRecord)
-        loadData()
+        setRefreshTrigger(prev => prev + 1)
     }
 
     const formatCurrency = (amount: number) => {
@@ -109,7 +112,7 @@ export default function VatTaxManagement() {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button variant="outline" className="h-11 rounded-xl border-border/50 font-bold gap-2" onClick={() => loadData()}>
+                        <Button variant="outline" className="h-11 rounded-xl border-border/50 font-bold gap-2" onClick={() => { setLoading(true); setRefreshTrigger(prev => prev + 1); }}>
                             <Printer className="h-4 w-4" />
                             Refresh Records
                         </Button>

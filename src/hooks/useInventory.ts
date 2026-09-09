@@ -23,7 +23,10 @@ export function useInventory(projectId?: string) {
     const [loading, setLoading] = useState(true)
 
     async function fetchInventory() {
-        if (!projectId) return
+        if (!projectId) {
+            setLoading(false)
+            return
+        }
 
         setLoading(true)
         try {

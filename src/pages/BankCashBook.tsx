@@ -39,21 +39,24 @@ export default function BankCashBook() {
     const [loading, setLoading] = useState(true)
     const [accounts, setAccounts] = useState<any[]>([])
     const [transactions, setTransactions] = useState<any[]>([])
+    const [refreshTrigger, setRefreshTrigger] = useState(0)
 
     useEffect(() => {
-        loadData()
-    }, [])
-
-    const loadData = async () => {
-        setLoading(true)
-        const [accs, trxs] = await Promise.all([
+        let isMounted = true
+        Promise.all([
             fetchBankAccounts(),
             fetchTransactions()
-        ])
-        setAccounts(accs)
-        setTransactions(trxs)
-        setLoading(false)
-    }
+        ]).then(([accs, trxs]) => {
+            if (isMounted) {
+                setAccounts(accs)
+                setTransactions(trxs)
+                setLoading(false)
+            }
+        })
+        return () => {
+            isMounted = false
+        }
+    }, [fetchBankAccounts, fetchTransactions, refreshTrigger])
 
     const formatCurrency = (amount: number) => {
         return `${currencySymbol}${amount.toLocaleString()}`
@@ -98,7 +101,7 @@ export default function BankCashBook() {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button variant="outline" className="h-11 rounded-xl border-border/50 font-bold gap-2 px-6" onClick={() => loadData()}>
+                        <Button variant="outline" className="h-11 rounded-xl border-border/50 font-bold gap-2 px-6" onClick={() => { setLoading(true); setRefreshTrigger(prev => prev + 1); }}>
                             <History className="h-4 w-4" />
                             Refresh
                         </Button>

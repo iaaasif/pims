@@ -94,7 +94,7 @@ export default function Projects() {
             case 'code':
                 comparison = a.code.localeCompare(b.code)
                 break
-            case 'status':
+            case 'status': {
                 const statusPriority = {
                     'active': 1,
                     'on_hold': 2,
@@ -103,6 +103,7 @@ export default function Projects() {
                 }
                 comparison = statusPriority[a.status] - statusPriority[b.status]
                 break
+            }
             case 'progress':
                 comparison = (a.progress || 0) - (b.progress || 0)
                 break

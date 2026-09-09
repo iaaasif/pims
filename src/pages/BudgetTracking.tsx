@@ -32,17 +32,20 @@ export default function BudgetTracking() {
     const [projectFilter, setProjectFilter] = useState('all')
     const [loading, setLoading] = useState(true)
     const [budgets, setBudgets] = useState<any[]>([])
+    const [refreshTrigger, setRefreshTrigger] = useState(0)
 
     useEffect(() => {
-        loadData()
-    }, [])
-
-    const loadData = async () => {
-        setLoading(true)
-        const data = await fetchBudgets()
-        setBudgets(data)
-        setLoading(false)
-    }
+        let isMounted = true
+        fetchBudgets().then(data => {
+            if (isMounted) {
+                setBudgets(data)
+                setLoading(false)
+            }
+        })
+        return () => {
+            isMounted = false
+        }
+    }, [fetchBudgets, refreshTrigger])
 
     const handleAddBudget = async () => {
         // Mock add for now
@@ -54,7 +57,7 @@ export default function BudgetTracking() {
             project_id: null // To be selected in a real dialog
         }
         await addBudget(newBudget)
-        loadData()
+        setRefreshTrigger(prev => prev + 1)
     }
 
     const formatCurrency = (amount: number) => {
@@ -120,7 +123,7 @@ export default function BudgetTracking() {
                         </Select>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button variant="outline" className="h-11 rounded-xl border-border/50 font-bold gap-2" onClick={() => loadData()}>
+                        <Button variant="outline" className="h-11 rounded-xl border-border/50 font-bold gap-2" onClick={() => { setLoading(true); setRefreshTrigger(prev => prev + 1); }}>
                             <Download className="h-4 w-4" />
                             Refresh
                         </Button>

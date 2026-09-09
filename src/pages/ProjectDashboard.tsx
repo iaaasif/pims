@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { ArrowLeft, Package, AlertTriangle, Activity, DollarSign } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -38,46 +38,51 @@ export default function ProjectDashboard() {
     const { inventory, loading: inventoryLoading } = useInventory(projectId)
     const { transfers, loading: transfersLoading } = useTransfers()
     const { requisitions, loading: requisitionsLoading } = usePurchaseRequisitions()
-    const [stats, setStats] = useState<ProjectStats>({
-        totalMaterials: 0,
-        totalValue: 0,
-        lowStockItems: 0,
-        activeTransfers: 0,
-        pendingRequisitions: 0,
-        totalUsage: 0
-    })
     const [activeTab, setActiveTab] = useState('overview')
 
     const project = projects.find(p => p.id === projectId)
 
-    const projectTransfers = transfers.filter(t =>
-        t.from_project_id === projectId || t.to_project_id === projectId
+    const projectTransfers = useMemo(() => 
+        transfers.filter(t => t.from_project_id === projectId || t.to_project_id === projectId),
+        [transfers, projectId]
     )
-    const projectRequisitions = requisitions.filter(r => r.project_id === projectId)
+    const projectRequisitions = useMemo(() => 
+        requisitions.filter(r => r.project_id === projectId),
+        [requisitions, projectId]
+    )
 
-    useEffect(() => {
-        if (project) {
-            const totalMaterials = inventory.length
-            const lowStockItems = inventory.filter(item => {
-                const material = item.material
-                return material && item.quantity <= material.min_stock_level
-            }).length
-            const totalUsage = inventory.reduce((sum, item) => sum + Number(item.quantity), 0)
-            const totalValue = inventory.reduce((sum, item) => sum + (Number(item.quantity) * Number(item.material.unit_price || 0)), 0)
-
-            const activeTransfers = projectTransfers.filter(t => t.status === 'pending').length
-            const pendingRequisitions = projectRequisitions.filter(r => r.status === 'submitted').length
-
-            setStats({
-                totalMaterials,
-                totalValue,
-                lowStockItems,
-                activeTransfers,
-                pendingRequisitions,
-                totalUsage
-            })
+    const stats = useMemo<ProjectStats>(() => {
+        if (!project) {
+            return {
+                totalMaterials: 0,
+                totalValue: 0,
+                lowStockItems: 0,
+                activeTransfers: 0,
+                pendingRequisitions: 0,
+                totalUsage: 0
+            }
         }
-    }, [project, inventory, transfers, requisitions, projectId])
+
+        const totalMaterials = inventory.length
+        const lowStockItems = inventory.filter(item => {
+            const material = item.material
+            return material && item.quantity <= material.min_stock_level
+        }).length
+        const totalUsage = inventory.reduce((sum, item) => sum + Number(item.quantity), 0)
+        const totalValue = inventory.reduce((sum, item) => sum + (Number(item.quantity) * Number(item.material.unit_price || 0)), 0)
+
+        const activeTransfers = projectTransfers.filter(t => t.status === 'pending').length
+        const pendingRequisitions = projectRequisitions.filter(r => r.status === 'submitted').length
+
+        return {
+            totalMaterials,
+            totalValue,
+            lowStockItems,
+            activeTransfers,
+            pendingRequisitions,
+            totalUsage
+        }
+    }, [project, inventory, projectTransfers, projectRequisitions])
 
     if (!projectId) return <div>Invalid Project ID</div>
     if (projectsLoading) {

@@ -47,18 +47,6 @@ export function CompanyInformationPanel() {
     uploadLogo
   } = useCompanyInformation({ enabled: isAdmin });
 
-  if (!isAdmin) {
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Access Denied</AlertTitle>
-        <AlertDescription>
-          You don't have permission to access this page. Only administrators can manage company information.
-        </AlertDescription>
-      </Alert>
-    );
-  }
-
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -93,6 +81,18 @@ export function CompanyInformationPanel() {
       setLogoPreview(company.logo_url || null);
     }
   }, [company, resetCompany]);
+
+  if (!isAdmin) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Access Denied</AlertTitle>
+        <AlertDescription>
+          You don't have permission to access this page. Only administrators can manage company information.
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   const handleCompanyFormSubmit = async (data: CompanyFormData) => {
     if (!company) return;

@@ -35,21 +35,25 @@ export default function BillVerification() {
     const [searchTerm, setSearchTerm] = useState('')
     const [loading, setLoading] = useState(true)
     const [bills, setBills] = useState<any[]>([])
+    const [refreshTrigger, setRefreshTrigger] = useState(0)
 
     useEffect(() => {
-        loadData()
-    }, [])
-
-    const loadData = async () => {
-        setLoading(true)
-        const data = await fetchBills()
-        setBills(data)
-        setLoading(false)
-    }
+        let isMounted = true
+        fetchBills().then(data => {
+            if (isMounted) {
+                setBills(data)
+                setLoading(false)
+            }
+        })
+        return () => {
+            isMounted = false
+        }
+    }, [fetchBills, refreshTrigger])
 
     const handleVerify = async (id: string) => {
+        setLoading(true)
         await updateBillStatus(id, 'Verified', 'Manager')
-        loadData()
+        setRefreshTrigger(prev => prev + 1)
     }
 
     const formatCurrency = (amount: number) => {

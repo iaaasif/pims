@@ -38,19 +38,21 @@ export default function PettyCash() {
     const [loading, setLoading] = useState(true)
     const [siteLedgers, setSiteLedgers] = useState<any[]>([])
     const [recentExpenses, setRecentExpenses] = useState<any[]>([])
+    const [refreshTrigger, setRefreshTrigger] = useState(0)
 
     useEffect(() => {
-        loadData()
-    }, [])
-
-    const loadData = async () => {
-        setLoading(true)
-        const data = await fetchPettyCashLedgers()
-        setSiteLedgers(data)
-        // For demonstration, recent expenses are empty until connected to expense table
-        setRecentExpenses([])
-        setLoading(false)
-    }
+        let isMounted = true
+        fetchPettyCashLedgers().then(data => {
+            if (isMounted) {
+                setSiteLedgers(data)
+                setRecentExpenses([])
+                setLoading(false)
+            }
+        })
+        return () => {
+            isMounted = false
+        }
+    }, [fetchPettyCashLedgers, refreshTrigger])
 
     const formatCurrency = (amount: number) => {
         return `${currencySymbol}${amount.toLocaleString()}`
@@ -95,7 +97,7 @@ export default function PettyCash() {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button variant="outline" className="h-11 rounded-xl border-border/50 font-bold gap-2" onClick={() => loadData()}>
+                        <Button variant="outline" className="h-11 rounded-xl border-border/50 font-bold gap-2" onClick={() => { setLoading(true); setRefreshTrigger(prev => prev + 1); }}>
                             <Download className="h-4 w-4" />
                             Refresh
                         </Button>

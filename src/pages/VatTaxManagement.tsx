@@ -69,8 +69,9 @@ export default function VatTaxManagement() {
         setRefreshTrigger(prev => prev + 1)
     }
 
-    const formatCurrency = (amount: number) => {
-        return `${currencySymbol}${amount.toLocaleString()}`
+    const formatCurrency = (amount?: number | null) => {
+        const val = Number(amount) || 0
+        return `${currencySymbol}${val.toLocaleString()}`
     }
 
     if (loading) {
@@ -207,12 +208,19 @@ export default function VatTaxManagement() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {taxRecords.map((rec) => (
+                            {taxRecords.map((rec) => {
+                                const billAmt = Number(rec.bill_amount ?? rec.taxable_amount ?? rec.total_amount) || 0
+                                const vatAmt = Number(rec.vat_amount) || 0
+                                const aitAmt = Number(rec.ait_amount ?? rec.tax_amount) || 0
+                                const netPayable = billAmt + vatAmt - aitAmt
+                                const dateStr = rec.date ? new Date(rec.date).toLocaleDateString() : ''
+
+                                return (
                                 <TableRow key={rec.id} className="border-border/50 hover:bg-muted/20 transition-colors group">
                                     <TableCell className="py-3">
                                         <div className="flex flex-col">
-                                            <span className="font-bold text-xs text-foreground">{rec.bill_id}</span>
-                                            <span className="text-[9px] text-muted-foreground">{rec.date}</span>
+                                            <span className="font-bold text-xs text-foreground">{rec.bill_id || rec.invoice_number}</span>
+                                            <span className="text-[9px] text-muted-foreground">{dateStr}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell>
@@ -223,16 +231,16 @@ export default function VatTaxManagement() {
                                             <span className="text-xs font-semibold">{rec.vendors?.name || 'Standard Supplier'}</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-right font-semibold text-xs tabular-nums">{formatCurrency(rec.bill_amount)}</TableCell>
-                                    <TableCell className="text-right font-bold text-xs text-blue-500 tabular-nums">+{formatCurrency(rec.vat_amount)}</TableCell>
-                                    <TableCell className="text-right font-bold text-xs text-rose-500 tabular-nums">-{formatCurrency(rec.ait_amount)}</TableCell>
-                                    <TableCell className="text-right font-bold text-xs text-foreground tabular-nums">{formatCurrency(rec.bill_amount + rec.vat_amount - rec.ait_amount)}</TableCell>
+                                    <TableCell className="text-right font-semibold text-xs tabular-nums">{formatCurrency(billAmt)}</TableCell>
+                                    <TableCell className="text-right font-bold text-xs text-blue-500 tabular-nums">+{formatCurrency(vatAmt)}</TableCell>
+                                    <TableCell className="text-right font-bold text-xs text-rose-500 tabular-nums">-{formatCurrency(aitAmt)}</TableCell>
+                                    <TableCell className="text-right font-bold text-xs text-foreground tabular-nums">{formatCurrency(netPayable)}</TableCell>
                                     <TableCell className="text-center">
                                         <span className={cn(
                                             "text-[10px] font-mono px-2 py-0.5 rounded-full border",
-                                            rec.mushak_number === 'Pending' ? "bg-rose-500/10 text-rose-500 border-rose-500/20" : "bg-muted text-muted-foreground border-border"
+                                            (rec.mushak_number || rec.challan_number || 'Pending') === 'Pending' ? "bg-rose-500/10 text-rose-500 border-rose-500/20" : "bg-muted text-muted-foreground border-border"
                                         )}>
-                                            {rec.mushak_number}
+                                            {rec.mushak_number || rec.challan_number || 'Pending'}
                                         </span>
                                     </TableCell>
                                     <TableCell className="text-center">
@@ -241,11 +249,12 @@ export default function VatTaxManagement() {
                                             rec.status === 'Submitted' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : 
                                             rec.status === 'Critical' ? "bg-rose-500/10 text-rose-500 border-rose-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20"
                                         )}>
-                                            {rec.status}
+                                            {rec.status || 'Active'}
                                         </Badge>
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                                )
+                            })}
                         </TableBody>
                     </Table>
                 </CardContent>

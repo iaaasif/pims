@@ -46,10 +46,10 @@ export function useRealTimeAlerts() {
                     table: 'materials',
                 },
                 (payload) => {
-                    const { name, current_stock, min_stock_level, unit } = payload.new
-                    const oldStock = payload.old.current_stock
+                    const { name, current_stock, min_stock_level, unit } = payload.new || {}
+                    const oldStock = payload.old ? payload.old.current_stock : (Number(current_stock) + 1)
 
-                    if (Number(current_stock) <= Number(min_stock_level) && Number(current_stock) < Number(oldStock)) {
+                    if (name && Number(current_stock) <= Number(min_stock_level) && Number(current_stock) < Number(oldStock)) {
                         toast.custom((t) => (
                             <LiveAlertToast
                                 title="Holy guacamole! Low Stock"

@@ -1,10 +1,11 @@
+import { useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 
 export function useFinance() {
 
     // Budgets
-    const fetchBudgets = async () => {
+    const fetchBudgets = useCallback(async () => {
         const { data, error } = await supabase
             .from('financial_budgets')
             .select('*, projects(name)')
@@ -13,10 +14,10 @@ export function useFinance() {
             toast.error('Failed to fetch budgets')
             return []
         }
-        return data
-    }
+        return data || []
+    }, [])
 
-    const addBudget = async (budget: any) => {
+    const addBudget = useCallback(async (budget: any) => {
         const { data, error } = await supabase
             .from('financial_budgets')
             .insert(budget)
@@ -26,11 +27,11 @@ export function useFinance() {
             return null
         }
         toast.success('Budget added successfully')
-        return data[0]
-    }
+        return data?.[0] || null
+    }, [])
 
     // VAT & Tax
-    const fetchTaxRecords = async () => {
+    const fetchTaxRecords = useCallback(async () => {
         const { data, error } = await supabase
             .from('vat_tax_records')
             .select('*, vendors(name)')
@@ -39,10 +40,10 @@ export function useFinance() {
             toast.error('Failed to fetch tax records')
             return []
         }
-        return data
-    }
+        return data || []
+    }, [])
 
-    const addTaxRecord = async (record: any) => {
+    const addTaxRecord = useCallback(async (record: any) => {
         const { data, error } = await supabase
             .from('vat_tax_records')
             .insert(record)
@@ -52,11 +53,11 @@ export function useFinance() {
             return null
         }
         toast.success('Tax record added')
-        return data[0]
-    }
+        return data?.[0] || null
+    }, [])
 
     // Bills
-    const fetchBills = async () => {
+    const fetchBills = useCallback(async () => {
         const { data, error } = await supabase
             .from('bills')
             .select('*, vendors(name), projects(name), purchase_orders(po_number)')
@@ -65,10 +66,10 @@ export function useFinance() {
             toast.error('Failed to fetch bills')
             return []
         }
-        return data
-    }
+        return data || []
+    }, [])
 
-    const updateBillStatus = async (id: string, status: string, approvalStep?: string) => {
+    const updateBillStatus = useCallback(async (id: string, status: string, approvalStep?: string) => {
         const { error } = await supabase
             .from('bills')
             .update({ status, approval_step: approvalStep })
@@ -79,10 +80,10 @@ export function useFinance() {
         }
         toast.success('Bill status updated')
         return true
-    }
+    }, [])
 
     // Petty Cash
-    const fetchPettyCashLedgers = async () => {
+    const fetchPettyCashLedgers = useCallback(async () => {
         const { data, error } = await supabase
             .from('petty_cash_ledgers')
             .select('*, projects(name)')
@@ -91,11 +92,11 @@ export function useFinance() {
             toast.error('Failed to fetch petty cash ledgers')
             return []
         }
-        return data
-    }
+        return data || []
+    }, [])
 
     // Bank & Cash
-    const fetchBankAccounts = async () => {
+    const fetchBankAccounts = useCallback(async () => {
         const { data, error } = await supabase
             .from('bank_accounts')
             .select('*')
@@ -104,10 +105,10 @@ export function useFinance() {
             toast.error('Failed to fetch bank accounts')
             return []
         }
-        return data
-    }
+        return data || []
+    }, [])
 
-    const fetchTransactions = async (accountId?: string) => {
+    const fetchTransactions = useCallback(async (accountId?: string) => {
         let query = supabase
             .from('financial_transactions')
             .select('*, bank_accounts(account_name)')
@@ -122,8 +123,8 @@ export function useFinance() {
             toast.error('Failed to fetch transactions')
             return []
         }
-        return data
-    }
+        return data || []
+    }, [])
 
     return {
         fetchBudgets,

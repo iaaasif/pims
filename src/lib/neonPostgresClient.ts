@@ -8,10 +8,234 @@ export interface PostgrestResponse<T = any> {
   count?: number | null
 }
 
+async function hydrateRelations(tableName: string, rows: any[], columnsStr: string) {
+  if (!rows || rows.length === 0 || !columnsStr || !columnsStr.includes('(')) {
+    return rows
+  }
+
+  try {
+    // 1. PO Items for purchase_orders
+    if (tableName === 'purchase_orders' && (columnsStr.includes('purchase_order_items') || columnsStr.includes('po_items') || columnsStr.includes('items:'))) {
+      const poIds = rows.map(r => r.id).filter(Boolean)
+      if (poIds.length > 0) {
+        const items = await queryNeon(`SELECT * FROM purchase_order_items WHERE po_id = ANY($1);`, [poIds])
+        const matIds = [...new Set(items.map((i: any) => i.material_id).filter(Boolean))]
+        let matMap: Record<string, any> = {}
+        if (matIds.length > 0) {
+          const mats = await queryNeon(`SELECT id, name, code, unit FROM materials WHERE id = ANY($1);`, [matIds])
+          mats.forEach((m: any) => { matMap[m.id] = m })
+        }
+        const itemMap: Record<string, any[]> = {}
+        items.forEach((it: any) => {
+          if (!itemMap[it.po_id]) itemMap[it.po_id] = []
+          itemMap[it.po_id].push({
+            ...it,
+            material: matMap[it.material_id] || null
+          })
+        })
+        rows.forEach(r => {
+          r.items = itemMap[r.id] || []
+          r.purchase_order_items = itemMap[r.id] || []
+        })
+      }
+    }
+
+    // 2. PR Items for purchase_requisitions
+    if (tableName === 'purchase_requisitions' && (columnsStr.includes('purchase_requisition_items') || columnsStr.includes('pr_items') || columnsStr.includes('items:'))) {
+      const prIds = rows.map(r => r.id).filter(Boolean)
+      if (prIds.length > 0) {
+        const items = await queryNeon(`SELECT * FROM purchase_requisition_items WHERE pr_id = ANY($1);`, [prIds])
+        const matIds = [...new Set(items.map((i: any) => i.material_id).filter(Boolean))]
+        let matMap: Record<string, any> = {}
+        if (matIds.length > 0) {
+          const mats = await queryNeon(`SELECT id, name, code, unit FROM materials WHERE id = ANY($1);`, [matIds])
+          mats.forEach((m: any) => { matMap[m.id] = m })
+        }
+        const itemMap: Record<string, any[]> = {}
+        items.forEach((it: any) => {
+          if (!itemMap[it.pr_id]) itemMap[it.pr_id] = []
+          itemMap[it.pr_id].push({
+            ...it,
+            material: matMap[it.material_id] || null
+          })
+        })
+        rows.forEach(r => {
+          r.items = itemMap[r.id] || []
+          r.purchase_requisition_items = itemMap[r.id] || []
+        })
+      }
+    }
+
+    // 3. Vendors
+    if (columnsStr.includes('vendors') || columnsStr.includes('vendor:')) {
+      const vIds = [...new Set(rows.map(r => r.vendor_id || r.supplier_id).filter(Boolean))]
+      if (vIds.length > 0) {
+        const vendors = await queryNeon(`SELECT * FROM vendors WHERE id = ANY($1);`, [vIds])
+        const vMap: Record<string, any> = {}
+        vendors.forEach((v: any) => { vMap[v.id] = v })
+        rows.forEach(r => {
+          const v = vMap[r.vendor_id || r.supplier_id] || null
+          r.vendor = v
+          r.vendors = v
+        })
+      }
+    }
+
+    // 4. Projects
+    if (columnsStr.includes('projects') || columnsStr.includes('project:') || columnsStr.includes('from_project:') || columnsStr.includes('to_project:')) {
+      const pIds = [...new Set([
+        ...rows.map(r => r.project_id),
+        ...rows.map(r => r.from_project_id),
+        ...rows.map(r => r.to_project_id)
+      ].filter(Boolean))]
+
+      if (pIds.length > 0) {
+        const projects = await queryNeon(`SELECT * FROM projects WHERE id = ANY($1);`, [pIds])
+        const pMap: Record<string, any> = {}
+        projects.forEach((p: any) => { pMap[p.id] = p })
+        rows.forEach(r => {
+          if (r.project_id) {
+            const p = pMap[r.project_id] || null
+            r.project = p
+            r.projects = p
+          }
+          if (r.from_project_id) {
+            r.from_project = pMap[r.from_project_id] || null
+          }
+          if (r.to_project_id) {
+            r.to_project = pMap[r.to_project_id] || null
+          }
+        })
+      }
+    }
+
+    // 5. Locations
+    if (columnsStr.includes('locations') || columnsStr.includes('location:')) {
+      const locIds = [...new Set([
+        ...rows.map(r => r.location_id),
+        ...rows.map(r => r.source_location_id),
+        ...rows.map(r => r.destination_location_id)
+      ].filter(Boolean))]
+      if (locIds.length > 0) {
+        const locs = await queryNeon(`SELECT * FROM locations WHERE id = ANY($1);`, [locIds])
+        const lMap: Record<string, any> = {}
+        locs.forEach((l: any) => { lMap[l.id] = l })
+        rows.forEach(r => {
+          const l = lMap[r.location_id] || null
+          r.location = l
+          r.locations = l
+        })
+      }
+    }
+
+    // 6. Profiles
+    if (columnsStr.includes('profiles') || columnsStr.includes('requester:') || columnsStr.includes('creator:')) {
+      const uIds = [...new Set([
+        ...rows.map(r => r.requested_by),
+        ...rows.map(r => r.created_by),
+        ...rows.map(r => r.user_id),
+        ...rows.map(r => r.manager_id),
+        ...rows.map(r => r.handled_by)
+      ].filter(Boolean))]
+
+      if (uIds.length > 0) {
+        const profiles = await queryNeon(`SELECT id, full_name, email, role, avatar_url, job_title FROM profiles WHERE id = ANY($1);`, [uIds])
+        const uMap: Record<string, any> = {}
+        profiles.forEach((u: any) => { uMap[u.id] = u })
+        rows.forEach(r => {
+          if (r.requested_by) r.requester = uMap[r.requested_by] || null
+          if (r.created_by) r.creator = uMap[r.created_by] || null
+          if (r.manager_id) r.manager = uMap[r.manager_id] || null
+          if (r.user_id) r.profiles = uMap[r.user_id] || null
+        })
+      }
+    }
+
+    // 7. Materials
+    if (columnsStr.includes('materials') || columnsStr.includes('material:')) {
+      const matIds = [...new Set(rows.map(r => r.material_id).filter(Boolean))]
+      if (matIds.length > 0) {
+        const materials = await queryNeon(`SELECT * FROM materials WHERE id = ANY($1);`, [matIds])
+        const mMap: Record<string, any> = {}
+        materials.forEach((m: any) => { mMap[m.id] = m })
+        rows.forEach(r => {
+          const m = mMap[r.material_id] || null
+          r.material = m
+          r.materials = m
+        })
+      }
+    }
+
+    // 8. Bank accounts
+    if (columnsStr.includes('bank_accounts')) {
+      const bIds = [...new Set(rows.map(r => r.account_id || r.bank_account_id).filter(Boolean))]
+      if (bIds.length > 0) {
+        const bankAccounts = await queryNeon(`SELECT * FROM bank_accounts WHERE id = ANY($1);`, [bIds])
+        const bMap: Record<string, any> = {}
+        bankAccounts.forEach((b: any) => { bMap[b.id] = b })
+        rows.forEach(r => {
+          const b = bMap[r.account_id || r.bank_account_id] || null
+          r.bank_accounts = b
+        })
+      }
+    }
+
+    // 9. POs
+    if (columnsStr.includes('purchase_orders')) {
+      if (tableName === 'purchase_requisitions') {
+        const prIds = rows.map(r => r.id).filter(Boolean)
+        if (prIds.length > 0) {
+          const pos = await queryNeon(`SELECT id, pr_id FROM purchase_orders WHERE pr_id = ANY($1);`, [prIds])
+          const poMap: Record<string, any[]> = {}
+          pos.forEach((po: any) => {
+            if (!poMap[po.pr_id]) poMap[po.pr_id] = []
+            poMap[po.pr_id].push({ id: po.id })
+          })
+          rows.forEach(r => {
+            r.purchase_orders = poMap[r.id] || []
+          })
+        }
+      } else if (tableName === 'bills') {
+        const poIds = [...new Set(rows.map(r => r.po_id).filter(Boolean))]
+        if (poIds.length > 0) {
+          const pos = await queryNeon(`SELECT id, po_number FROM purchase_orders WHERE id = ANY($1);`, [poIds])
+          const poMap: Record<string, any> = {}
+          pos.forEach((po: any) => { poMap[po.id] = po })
+          rows.forEach(r => {
+            r.purchase_orders = poMap[r.po_id] || null
+          })
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Relation hydration warning:', err)
+  }
+
+  return rows
+}
+
+function normalizeDates(obj: any): any {
+  if (obj === null || obj === undefined) return obj
+  if (obj instanceof Date) {
+    const iso = obj.toISOString()
+    return iso.endsWith('T00:00:00.000Z') ? iso.split('T')[0] : iso
+  }
+  if (Array.isArray(obj)) return obj.map(normalizeDates)
+  if (typeof obj === 'object') {
+    const res: any = {}
+    for (const key of Object.keys(obj)) {
+      res[key] = normalizeDates(obj[key])
+    }
+    return res
+  }
+  return obj
+}
+
 export class QueryBuilder<T = any> implements PromiseLike<PostgrestResponse<T>> {
   private tableName: string
   private action: 'select' | 'insert' | 'update' | 'delete' = 'select'
   private columns = '*'
+  private selectOptions?: { count?: string; head?: boolean }
   private insertData: any = null
   private updateData: any = null
   private onConflictClause = ''
@@ -26,8 +250,9 @@ export class QueryBuilder<T = any> implements PromiseLike<PostgrestResponse<T>> 
     this.tableName = tableName
   }
 
-  select(columns = '*'): this {
+  select(columns = '*', options?: { count?: string; head?: boolean }): this {
     this.columns = columns
+    this.selectOptions = options
     return this
   }
 
@@ -216,6 +441,14 @@ export class QueryBuilder<T = any> implements PromiseLike<PostgrestResponse<T>> 
     try {
       if (this.action === 'select') {
         const { whereSql, params } = this.buildWhere()
+
+        if (this.selectOptions?.head) {
+          const countQuery = `SELECT count(*)::int as count FROM "${this.tableName}" ${whereSql};`
+          const countRows = await queryNeon(countQuery, params)
+          const totalCount = countRows[0]?.count ?? 0
+          return { data: null, error: null, count: totalCount }
+        }
+
         const colSql = this.columns && this.columns !== '*' && !this.columns.includes('(')
           ? this.columns.split(',').map(c => `"${c.trim()}"`).join(', ')
           : '*'
@@ -223,20 +456,26 @@ export class QueryBuilder<T = any> implements PromiseLike<PostgrestResponse<T>> 
         const query = `SELECT ${colSql} FROM "${this.tableName}" ${whereSql} ${this.orderByClause} ${this.limitClause} ${this.offsetClause};`
         const rows = await queryNeon(query, params)
 
+        if (rows && rows.length > 0 && this.columns && this.columns.includes('(')) {
+          await hydrateRelations(this.tableName, rows, this.columns)
+        }
+
+        const safeRows = normalizeDates(rows)
+
         if (this.isSingle) {
-          if (rows.length === 0) {
+          if (safeRows.length === 0) {
             const notFoundErr: any = new Error('Row not found')
             notFoundErr.code = 'PGRST116'
             return { data: null, error: notFoundErr }
           }
-          return { data: rows[0] as T, error: null }
+          return { data: safeRows[0] as T, error: null }
         }
 
         if (this.isMaybeSingle) {
-          return { data: (rows[0] as T) || null, error: null }
+          return { data: (safeRows[0] as T) || null, error: null }
         }
 
-        return { data: rows as unknown as T, error: null, count: rows.length }
+        return { data: safeRows as unknown as T, error: null, count: safeRows.length }
       }
 
       if (this.action === 'insert') {

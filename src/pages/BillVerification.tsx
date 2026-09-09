@@ -199,7 +199,7 @@ export default function BillVerification() {
                                     <TableCell className="py-4">
                                         <div className="flex flex-col">
                                             <span className="font-bold text-xs">{bill.bill_number}</span>
-                                            <span className="text-[9px] text-muted-foreground">{bill.date}</span>
+                                            <span className="text-[9px] text-muted-foreground">{bill.date ? new Date(bill.date).toLocaleDateString() : ''}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell>

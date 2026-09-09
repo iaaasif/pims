@@ -2,21 +2,27 @@ import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { getDatabase, ref, onValue, push, set, off } from 'firebase/database'
 
+const getEnv = (key: string, fallback = '') => {
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) return import.meta.env[key]
+  if (typeof process !== 'undefined' && process.env && process.env[key]) return process.env[key]
+  return fallback
+}
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'mock-api-key',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'pims-app.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'pims-app',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'pims-app.appspot.com',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '1234567890',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:1234567890:web:mockappid',
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || 'https://pims-app-default-rtdb.firebaseio.com'
+  apiKey: getEnv('VITE_FIREBASE_API_KEY', 'mock-api-key'),
+  authDomain: getEnv('VITE_FIREBASE_AUTH_DOMAIN', 'pims-app.firebaseapp.com'),
+  projectId: getEnv('VITE_FIREBASE_PROJECT_ID', 'pims-app'),
+  storageBucket: getEnv('VITE_FIREBASE_STORAGE_BUCKET', 'pims-app.appspot.com'),
+  messagingSenderId: getEnv('VITE_FIREBASE_MESSAGING_SENDER_ID', '1234567890'),
+  appId: getEnv('VITE_FIREBASE_APP_ID', '1:1234567890:web:mockappid'),
+  databaseURL: getEnv('VITE_FIREBASE_DATABASE_URL', 'https://pims-app-default-rtdb.firebaseio.com')
 }
 
 export const isFirebaseConfigured = Boolean(
-  import.meta.env.VITE_FIREBASE_API_KEY &&
-  import.meta.env.VITE_FIREBASE_API_KEY !== 'AIzaSyPlaceholderKeyForPims' &&
-  import.meta.env.VITE_FIREBASE_PROJECT_ID &&
-  import.meta.env.VITE_FIREBASE_PROJECT_ID !== 'pims-app'
+  getEnv('VITE_FIREBASE_API_KEY') &&
+  getEnv('VITE_FIREBASE_API_KEY') !== 'AIzaSyPlaceholderKeyForPims' &&
+  getEnv('VITE_FIREBASE_PROJECT_ID') &&
+  getEnv('VITE_FIREBASE_PROJECT_ID') !== 'pims-app'
 )
 
 // Initialize Firebase safely

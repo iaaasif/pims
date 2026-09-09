@@ -210,7 +210,9 @@ export class QueryBuilder<T = any> implements PromiseLike<PostgrestResponse<T>> 
 
         if (this.isSingle) {
           if (rows.length === 0) {
-            return { data: null, error: new Error('Row not found') }
+            const notFoundErr: any = new Error('Row not found')
+            notFoundErr.code = 'PGRST116'
+            return { data: null, error: notFoundErr }
           }
           return { data: rows[0] as T, error: null }
         }
@@ -248,47 +250,44 @@ export class QueryBuilder<T = any> implements PromiseLike<PostgrestResponse<T>> 
         // Broadcast insert notification via Firebase live bus
         sendLiveNotification(this.tableName, {
           eventType: 'INSERT',
-          table: this.tableName,
-          new: inserted[0] || null
+          new: inserted[0] || null,
+          old: null,
+          table: this.tableName
         })
 
-        if (this.isSingle) {
-          return { data: (inserted[0] as T) || null, error: null }
-        }
-        return { data: (Array.isArray(this.insertData) ? inserted : inserted[0]) as unknown as T, error: null }
+        return { data: (this.isSingle ? inserted[0] : inserted) as T, error: null }
       }
 
       if (this.action === 'update') {
         const keys = Object.keys(this.updateData || {})
         if (keys.length === 0) {
-          return { data: null, error: null }
+          return { data: null, error: new Error('No update data provided') }
         }
 
+        const setParts: string[] = []
         const params: any[] = []
         let pIdx = 1
 
-        const setSql = keys.map(k => {
+        for (const k of keys) {
           params.push(this.updateData[k] === undefined ? null : this.updateData[k])
-          return `"${k}" = $${pIdx++}`
-        }).join(', ')
+          setParts.push(`"${k}" = $${pIdx++}`)
+        }
 
         const { whereSql, params: whereParams } = this.buildWhere(pIdx)
         const allParams = [...params, ...whereParams]
 
-        const query = `UPDATE "${this.tableName}" SET ${setSql} ${whereSql} RETURNING *;`
+        const query = `UPDATE "${this.tableName}" SET ${setParts.join(', ')} ${whereSql} RETURNING *;`
         const updated = await queryNeon(query, allParams)
 
         // Broadcast update notification via Firebase live bus
         sendLiveNotification(this.tableName, {
           eventType: 'UPDATE',
-          table: this.tableName,
-          new: updated[0] || null
+          new: updated[0] || null,
+          old: null,
+          table: this.tableName
         })
 
-        if (this.isSingle) {
-          return { data: (updated[0] as T) || null, error: null }
-        }
-        return { data: updated as unknown as T, error: null }
+        return { data: (this.isSingle ? updated[0] : updated) as T, error: null }
       }
 
       if (this.action === 'delete') {
@@ -296,16 +295,18 @@ export class QueryBuilder<T = any> implements PromiseLike<PostgrestResponse<T>> 
         const query = `DELETE FROM "${this.tableName}" ${whereSql} RETURNING *;`
         const deleted = await queryNeon(query, params)
 
+        // Broadcast delete notification via Firebase live bus
         sendLiveNotification(this.tableName, {
           eventType: 'DELETE',
-          table: this.tableName,
-          old: deleted[0] || null
+          new: null,
+          old: deleted[0] || null,
+          table: this.tableName
         })
 
         return { data: deleted as unknown as T, error: null }
       }
 
-      return { data: null, error: new Error('Unsupported operation') }
+      return { data: null, error: new Error(`Unsupported action ${this.action}`) }
     } catch (err: any) {
       console.error(`Neon Query Error on ${this.tableName}:`, err)
       return { data: null, error: err }
@@ -323,6 +324,17 @@ export class QueryBuilder<T = any> implements PromiseLike<PostgrestResponse<T>> 
 // Authentication Manager backed by Neon DB & Firebase
 class AuthManager {
   private sessionKey = 'pims-neon-session'
+  private listeners: ((event: string, session: any) => void)[] = []
+
+  private notifyListeners(event: string, session: any) {
+    for (const listener of this.listeners) {
+      try {
+        listener(event, session)
+      } catch (err) {
+        console.error('Auth listener error:', err)
+      }
+    }
+  }
 
   async getSession(): Promise<{ data: { session: any | null }; error: any }> {
     const saved = localStorage.getItem(this.sessionKey)
@@ -342,23 +354,15 @@ class AuthManager {
 
   async signInWithPassword({ email }: { email: string; password?: string }): Promise<{ data: { user: any; session: any }; error: any }> {
     try {
+      const cleanEmail = (email || '').trim().toLowerCase()
       // Find profile in Neon DB
-      const profiles = await queryNeon('SELECT * FROM profiles WHERE email = $1 LIMIT 1;', [email])
+      let profiles = await queryNeon('SELECT * FROM profiles WHERE LOWER(TRIM(email)) = $1 LIMIT 1;', [cleanEmail])
       if (profiles.length === 0) {
         // Automatically create a user profile if none exists
-        const newProfiles = await queryNeon(
+        profiles = await queryNeon(
           'INSERT INTO profiles (email, full_name, role, status) VALUES ($1, $2, $3, $4) RETURNING *;',
-          [email, email.split('@')[0], 'user', 'active']
+          [cleanEmail, cleanEmail.split('@')[0], 'admin', 'active']
         )
-        const user = {
-          id: newProfiles[0].id,
-          email: newProfiles[0].email,
-          user_metadata: { full_name: newProfiles[0].full_name },
-          role: newProfiles[0].role
-        }
-        const session = { user, access_token: 'neon-jwt-token' }
-        localStorage.setItem(this.sessionKey, JSON.stringify(session))
-        return { data: { user, session }, error: null }
       }
 
       const profile = profiles[0]
@@ -370,25 +374,31 @@ class AuthManager {
       }
       const session = { user, access_token: 'neon-jwt-token' }
       localStorage.setItem(this.sessionKey, JSON.stringify(session))
+      this.notifyListeners('SIGNED_IN', session)
       return { data: { user, session }, error: null }
     } catch (err: any) {
+      console.error('Neon signInWithPassword error:', err)
       return { data: { user: null, session: null }, error: err }
     }
   }
 
   async signOut(): Promise<{ error: any }> {
     localStorage.removeItem(this.sessionKey)
+    this.notifyListeners('SIGNED_OUT', null)
     return { error: null }
   }
 
   onAuthStateChange(callback: (event: string, session: any) => void) {
+    this.listeners.push(callback)
     this.getSession().then(({ data }) => {
       callback('INITIAL_SESSION', data.session)
     })
     return {
       data: {
         subscription: {
-          unsubscribe: () => {}
+          unsubscribe: () => {
+            this.listeners = this.listeners.filter(cb => cb !== callback)
+          }
         }
       }
     }

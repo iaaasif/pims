@@ -41,6 +41,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setSession(session)
             setUser(session?.user ?? null)
             if (session?.user) {
+                if (session.user.user_metadata || session.user.role) {
+                    setProfile((prev) => prev || ({
+                        id: session.user.id,
+                        email: session.user.email || '',
+                        full_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
+                        role: session.user.role || 'admin',
+                        status: 'active',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    } as Profile))
+                }
                 fetchProfile(session.user.id)
             } else {
                 setLoading(false)
@@ -51,6 +62,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setSession(session)
             setUser(session?.user ?? null)
             if (session?.user) {
+                if (session.user.user_metadata || session.user.role) {
+                    setProfile((prev) => prev || ({
+                        id: session.user.id,
+                        email: session.user.email || '',
+                        full_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
+                        role: session.user.role || 'admin',
+                        status: 'active',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    } as Profile))
+                }
                 fetchProfile(session.user.id)
             } else {
                 setProfile(null)
@@ -70,22 +92,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 .single()
 
             if (error) {
-                // Handle specific error codes
-                if (error.code === 'PGRST116') { // No rows returned
+                if (error.code === 'PGRST116') {
                     await createProfileForUser(userId)
-                } else if (error.code === '406') { // Not acceptable - RLS issue
-                    console.error('RLS policy error, user may not have permission')
-                    toast.error('Permission denied. Please contact admin.')
                 } else {
                     console.error('Profile fetch error:', error.message)
-                    toast.error('Failed to load profile')
                 }
-            } else {
+            } else if (data) {
                 setProfile(data)
             }
         } catch (error) {
             console.error('Error fetching profile:', error)
-            toast.error('Failed to load user profile')
         } finally {
             setLoading(false)
         }

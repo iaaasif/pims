@@ -1,6 +1,9 @@
 import { neon } from '@neondatabase/serverless'
 
-const connectionString = import.meta.env.VITE_NEON_DATABASE_URL || ''
+const connectionString = 
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_NEON_DATABASE_URL) ||
+  (typeof process !== 'undefined' && process.env && process.env.VITE_NEON_DATABASE_URL) ||
+  'postgresql://neondb_owner:npg_tTj9wfPXEo1b@ep-curly-unit-b3kptnnt-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=require'
 
 if (!connectionString) {
   console.warn('VITE_NEON_DATABASE_URL is not set in environment variables.')

@@ -54,7 +54,7 @@ export default function Login() {
             }
 
             toast.success('Logged in successfully')
-            navigate('/')
+            navigate('/', { replace: true })
         } catch {
             toast.error('An error occurred during login')
         } finally {
